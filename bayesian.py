@@ -3,6 +3,8 @@
 import sys
 import copy
 import itertools
+from compiler.ast import flatten
+from collections import OrderedDict
 
 fp = open(sys.argv[-1],'r')
 line = fp.readlines()
@@ -80,7 +82,6 @@ def network_build(temp):
 				internal_dict['abs_prob'] = 1
 				internal_dict["decision"] = 1
 			internal_dict['cond_prob'] = {}
-	net_dict[key.strip()] = internal_dict
 	return key.strip(), internal_dict
 
 while(i < len(line)):
@@ -127,6 +128,8 @@ print
 print "SORTED VARS: ", l
 
 def get_value(y, lists):
+	if net_dict[y]['decision'] == 1:
+		return 1.0
 	if net_dict[y]['abs_prob'] == "":
 		all_parents = ""
 		for parent in net_dict[y]['parent']:
@@ -194,7 +197,57 @@ def enumerate_all(svars, e):
 
 	return res
 
+def EU_ask(X, E):
+	
+	E = flatten(E)
+	E_dict = {E[i]:E[i+1] for i in range(0, len(E), 2)
+}
+	new = OrderedDict()
+	for each in utility_dict['utility']['parent']:
+		new[each] = ""
+	for each in E_dict.keys():
+		if each in new.keys():
+			new[each] = E_dict[each]
+	print new
+	for each in X:
+		if each in E_dict.keys():
+			X.remove(each)
+	perms = permutation_generate(len(X))
+	total = 0
+	for each_perm in perms:
+		x_dict = dict()
+		i = 0
+		for each_X in X:
+			x_dict[each_X] = each_perm[i]
+			new[each_X] = each_perm[i]
+			i = i + 1
+		new_dict = {}
+		new_dict['query'] = x_dict
+		new_dict['given'] = E_dict
+		res = enumeration_ask(new_dict)
+		print "NEW NEW:", new
+		signs = ""
+		for each in new.keys():
+			signs = signs + new[each]
+		print signs	
+		total = total + res * float(utility_dict['utility']['cond_prob'][signs])
+	return total
+
 for each_query in main_list:
 	if each_query['type'] == "P":
 		print enumeration_ask(each_query)
-				
+	if each_query['type'] == "EU":
+		E = []
+		E = each_query['given']
+		X = []
+		X = each_query['query']
+		E.append(X)
+		Y = copy.deepcopy(utility_dict['utility']['parent'])
+		print EU_ask(Y, E)
+#	if each_query['type'] == "MEU":
+#		E = []
+#		E = each_query['given']
+#		X = []
+#		X = each_query['query']
+#		E.append(X)
+#		print MEU_ask(utility_dict['utility']['parent'], E)		
