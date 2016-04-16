@@ -64,6 +64,7 @@ def network_build(temp):
 	internal_dict = {}
 	internal_dict2 = {}
 	internal_dict["parent"] = parent
+	internal_dict["decision"] = 0
 	for each_value in temp[1:]:
 		if parent:
 			index = each_value.find(" ")
@@ -73,10 +74,14 @@ def network_build(temp):
 			internal_dict['cond_prob'] = internal_dict2
 			internal_dict['abs_prob'] = ''
 		else:
-			internal_dict['abs_prob'] = each_value.strip()
+			if each_value.strip() != "decision":
+				internal_dict['abs_prob'] = each_value.strip()
+			else:
+				internal_dict['abs_prob'] = 1
+				internal_dict["decision"] = 1
 			internal_dict['cond_prob'] = {}
 	net_dict[key.strip()] = internal_dict
-
+	return key.strip(), internal_dict
 
 while(i < len(line)):
 	temp = []
@@ -85,8 +90,24 @@ while(i < len(line)):
 			break
 		temp.append(line[i].strip())
 		i = i + 1
-	network_build(temp)
+	key, dicti = network_build(temp)
+	net_dict[key] = dicti
+	if i < len(line) and line[i].strip() == "******":
+		break
 	i = i + 1
+
+i = i + 1
+
+utility_list = []
+utility_dict = {}
+while(i < len(line)):
+	utility_list.append(line[i].strip())
+	i = i + 1
+if utility_list:
+	u_key, u_dict = network_build(utility_list)
+	utility_dict[u_key] = u_dict
+print "UTITLITY LIST:" , utility_dict
+
 
 #topological sorting
 variables = list(net_dict.keys())
@@ -174,4 +195,6 @@ def enumerate_all(svars, e):
 	return res
 
 for each_query in main_list:
-	print enumeration_ask(each_query)
+	if each_query['type'] == "P":
+		print enumeration_ask(each_query)
+				
