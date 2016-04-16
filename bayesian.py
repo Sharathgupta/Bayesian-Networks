@@ -13,7 +13,6 @@ line = fp.readlines()
 i = 0
 main_list = []
 while (line[i].strip() != "******"):
-	#print line[i]
 	line[i] = line[i].replace(" ", "").strip()
 	bracket1 = line[i].find('(')
 	bracket2 = line[i].find(')')
@@ -33,11 +32,14 @@ while (line[i].strip() != "******"):
 	b = given.split(',')
 	for eacha in a:
 		xy = eacha.split("=")
+		if len(xy) < 2:
+			xy.append("")
 		dict_value.append(xy)
 
 	for eachb in b:
-		xy = eachb.split("=")
-		dict_value2.append(xy)
+		xy1 = eachb.split("=")
+		dict_value2.append(xy1)
+
 	dictionary = {}
 	dictionary['query'] = dict_value
 	dictionary['type'] = query_type
@@ -107,7 +109,6 @@ while(i < len(line)):
 if utility_list:
 	u_key, u_dict = network_build(utility_list)
 	utility_dict[u_key] = u_dict
-print "UTITLITY LIST:" , utility_dict
 
 
 #topological sorting
@@ -121,11 +122,6 @@ while len(s) < len(variables):
 			s.add(v)
 			l.append(v)
 
-print "network_build: ", net_dict
-print
-print "Query list: ", main_list
-print
-print "SORTED VARS: ", l
 
 def get_value(y, lists):
 	if net_dict[y]['decision'] == 1:
@@ -208,7 +204,6 @@ def EU_ask(X, E):
 	for each in E_dict.keys():
 		if each in new.keys():
 			new[each] = E_dict[each]
-	print new
 	for each in X:
 		if each in E_dict.keys():
 			X.remove(each)
@@ -225,13 +220,47 @@ def EU_ask(X, E):
 		new_dict['query'] = x_dict
 		new_dict['given'] = E_dict
 		res = enumeration_ask(new_dict)
-		print "NEW NEW:", new
 		signs = ""
 		for each in new.keys():
 			signs = signs + new[each]
-		print signs	
 		total = total + res * float(utility_dict['utility']['cond_prob'][signs])
 	return total
+
+def MEU_ask(query):
+	X = query['query']
+	E = query['given']
+	X.append(E)
+	X = flatten(X)
+	real_X = copy.deepcopy(utility_dict['utility']['parent'])
+	x_dict = OrderedDict()
+	j = 0
+	new_li = []
+	for i in range(0, len(X), 2):
+		x_dict[X[i]] = X[i+1]
+	for each in x_dict:
+		if x_dict[each] != "":
+			pass
+		elif x_dict[each] == "":
+			new_li.append(each)
+			j = j + 1
+	perms = permutation_generate(j)
+	output = {}
+	for each in perms:
+		k = 0
+		for eachx in x_dict.keys():
+			if eachx in new_li:
+				x_dict[eachx] = each[k]
+				k = k + 1
+		xitems = x_dict.items()
+		res = EU_ask(real_X, xitems)
+		key=""
+		for k in x_dict.keys():
+			if k in new_li:
+				key=key+x_dict[k]+" "
+		output[res]=key
+	max_value=max(output.keys())
+	sign=output[max_value]
+	return sign, max_value
 
 for each_query in main_list:
 	if each_query['type'] == "P":
@@ -244,10 +273,6 @@ for each_query in main_list:
 		E.append(X)
 		Y = copy.deepcopy(utility_dict['utility']['parent'])
 		print EU_ask(Y, E)
-#	if each_query['type'] == "MEU":
-#		E = []
-#		E = each_query['given']
-#		X = []
-#		X = each_query['query']
-#		E.append(X)
-#		print MEU_ask(utility_dict['utility']['parent'], E)		
+	if each_query['type'] == "MEU":
+		sign, value = MEU_ask(each_query)		
+		print sign, value
