@@ -97,8 +97,9 @@ while(i < len(line)):
 			break
 	key, dicti = network_build(temp)
 	net_dict[key] = dicti
-	if i < len(line) and line[i].strip() == "******":
-		break
+	if i < len(line):
+		if line[i].strip() == "******":
+			break
 	i = i + 1
 
 utility_list = []
@@ -200,14 +201,14 @@ def enumerate_all(svars, e):
 
 def EU_ask(X, E):
 	
-	E = flatten(E)
-	E_dict = {}
 	new = OrderedDict()
+	E = flatten(E)
+	for each in utility_dict['utility']['parent']:
+		new[each] = ""
+	E_dict = {}
 	for i in range(0, len(E), 2):
 		E_dict[E[i]] = E[i+1]
 
-	for each in utility_dict['utility']['parent']:
-		new[each] = ""
 	for each in E_dict.keys():
 		if each not in new.keys():
 			pass
@@ -247,10 +248,10 @@ def MEU_ask(query):
 	x_dict = OrderedDict()
 	real_X = copy.deepcopy(utility_dict['utility']['parent'])
 	X = flatten(X)
-	j = 0
-	new_li = []
 	for i in range(0, len(X), 2):
 		x_dict[X[i]] = X[i+1]
+	j = 0
+	new_li = []
 	for each in x_dict:
 		if x_dict[each] != "":
 			pass
