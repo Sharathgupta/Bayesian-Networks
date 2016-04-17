@@ -5,10 +5,11 @@ import copy
 import itertools
 from compiler.ast import flatten
 from collections import OrderedDict
+from decimal import Decimal
 
 fp = open(sys.argv[-1],'r')
 line = fp.readlines()
-
+fp2 = open("output.txt", "w")
 #parse till "******"
 i = 0
 main_list = []
@@ -89,20 +90,20 @@ def network_build(temp):
 while(i < len(line)):
 	temp = []
 	while i < len(line) and line[i].strip() != "***":
-		if line[i].strip() == "******":
+		if line[i].strip() != "******":
+			temp.append(line[i].strip())
+			i = i + 1
+		elif line[i].strip() == "******":
 			break
-		temp.append(line[i].strip())
-		i = i + 1
 	key, dicti = network_build(temp)
 	net_dict[key] = dicti
 	if i < len(line) and line[i].strip() == "******":
 		break
 	i = i + 1
 
-i = i + 1
-
 utility_list = []
 utility_dict = {}
+i = i + 1
 while(i < len(line)):
 	utility_list.append(line[i].strip())
 	i = i + 1
@@ -144,10 +145,12 @@ def get_value(y, lists):
 
 def permutation_generate(num):
 	pset = set()
-	for count in itertools.combinations_with_replacement(['+', '-'], num):
+	signs = ['+', '-']
+	for count in itertools.combinations_with_replacement(signs, num):
 		for inner_count in itertools.permutations(count):
 			pset.add(inner_count)
-	return list(pset)
+	output = list(pset)
+	return output
 
 def enumeration_ask(query):
 	X = query["query"]
@@ -165,14 +168,15 @@ def enumeration_ask(query):
 	qe = enumerate_all(l, ex_dict)
 	
 	permutations = permutation_generate(len(X_dict))
-	
-	for each_perm in permutations:
+	for index in range(len(permutations)):
 		x = 0
 		for each_X in X_dict.keys():
-			ex_dict[each_X] = each_perm[x]
+			ex_dict[each_X] = permutations[index][x]
 			x = x + 1
-		qx.append(enumerate_all(l, ex_dict))
-	return qe/sum(qx)
+		partial = enumerate_all(l, ex_dict)
+		qx.append(partial)
+	output =  qe/sum(qx)
+	return output
 
 def enumerate_all(svars, e):
 	if len(svars) == 0:
@@ -185,7 +189,8 @@ def enumerate_all(svars, e):
 		for value in ['+', '-']:
 			e_dict[Y] = value
 			value = get_value(Y, e_dict)
-			probs.append(value * enumerate_all(svars[1:], e_dict))
+			value2 = enumerate_all(svars[1:], e_dict)
+			probs.append(value * value2)
 		res = sum(probs)
 	else:
 		value = get_value(Y, e_dict)
@@ -196,13 +201,17 @@ def enumerate_all(svars, e):
 def EU_ask(X, E):
 	
 	E = flatten(E)
-	E_dict = {E[i]:E[i+1] for i in range(0, len(E), 2)
-}
+	E_dict = {}
 	new = OrderedDict()
+	for i in range(0, len(E), 2):
+		E_dict[E[i]] = E[i+1]
+
 	for each in utility_dict['utility']['parent']:
 		new[each] = ""
 	for each in E_dict.keys():
-		if each in new.keys():
+		if each not in new.keys():
+			pass
+		elif each in new.keys():
 			new[each] = E_dict[each]
 	for each in X:
 		if each in E_dict.keys():
@@ -212,13 +221,14 @@ def EU_ask(X, E):
 	for each_perm in perms:
 		x_dict = dict()
 		i = 0
-		for each_X in X:
-			x_dict[each_X] = each_perm[i]
-			new[each_X] = each_perm[i]
-			i = i + 1
 		new_dict = {}
-		new_dict['query'] = x_dict
 		new_dict['given'] = E_dict
+		for index in range(len(X)):
+			new[X[index]] = each_perm[i]
+			x_dict[X[index]] = each_perm[i]
+			i = i + 1
+
+		new_dict['query'] = x_dict
 		res = enumeration_ask(new_dict)
 		signs = ""
 		for each in new.keys():
@@ -227,12 +237,16 @@ def EU_ask(X, E):
 	return total
 
 def MEU_ask(query):
-	X = query['query']
+
+	X = []
+	Y= []
+	Y = query['query']
+	E = []
 	E = query['given']
-	X.append(E)
-	X = flatten(X)
-	real_X = copy.deepcopy(utility_dict['utility']['parent'])
+	X = Y + E
 	x_dict = OrderedDict()
+	real_X = copy.deepcopy(utility_dict['utility']['parent'])
+	X = flatten(X)
 	j = 0
 	new_li = []
 	for i in range(0, len(X), 2):
@@ -241,22 +255,28 @@ def MEU_ask(query):
 		if x_dict[each] != "":
 			pass
 		elif x_dict[each] == "":
-			new_li.append(each)
 			j = j + 1
+			new_li.append(each)
 	perms = permutation_generate(j)
 	output = {}
+	k = 0
 	for each in perms:
 		k = 0
 		for eachx in x_dict.keys():
-			if eachx in new_li:
+			if eachx not in new_li:
+				pass
+			elif eachx in new_li:
 				x_dict[eachx] = each[k]
 				k = k + 1
 		xitems = x_dict.items()
 		res = EU_ask(real_X, xitems)
 		key=""
 		for k in x_dict.keys():
-			if k in new_li:
-				key=key+x_dict[k]+" "
+			if k not in new_li:
+				pass
+			else:
+				key=key+x_dict[k]
+				key = key + " "
 		output[res]=key
 	max_value=max(output.keys())
 	sign=output[max_value]
@@ -264,15 +284,20 @@ def MEU_ask(query):
 
 for each_query in main_list:
 	if each_query['type'] == "P":
-		print enumeration_ask(each_query)
+		P_answer = enumeration_ask(each_query)
+		P_answer = str(Decimal(str(P_answer)).quantize(Decimal('.01'))) + '\n'
+		fp2.write(P_answer)
 	if each_query['type'] == "EU":
+		Y = copy.deepcopy(utility_dict['utility']['parent'])
 		E = []
 		E = each_query['given']
 		X = []
 		X = each_query['query']
 		E.append(X)
-		Y = copy.deepcopy(utility_dict['utility']['parent'])
-		print EU_ask(Y, E)
+		EU_answer = EU_ask(Y, E)
+		EU_answer = str(int(round(EU_answer)))+"\n"
+		fp2.write(EU_answer)
 	if each_query['type'] == "MEU":
 		sign, value = MEU_ask(each_query)		
-		print sign, value
+		MEU_answer = str(sign)+str(int(round(value)))+"\n"
+		fp2.write(MEU_answer)
